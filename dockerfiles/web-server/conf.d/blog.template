@@ -1,0 +1,34 @@
+server {
+   listen 8080;
+   server_name ${WEB_SERVER_NGNIX_SERVER_NAME};
+   return 301 https://$host$request_uri;
+}
+
+server {
+    listen  443 ssl;
+    server_name  ${WEB_SERVER_NGNIX_SERVER_NAME};
+	ssl_certificate /etc/letsencrypt/live/${WEB_SERVER_NGNIX_SERVER_NAME}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/${WEB_SERVER_NGNIX_SERVER_NAME}/privkey.pem;
+    client_max_body_size 50m;	
+    #charset koi8-r;
+    #access_log  /var/log/nginx/host.access.log  main;
+    ssl on;
+    location /gogs/ { 
+        proxy_pass https://git-server:3000/;
+    }
+    
+    location / {
+         root  /etc/nginx/html/blog/dist;
+         index  index.html index.htm;
+     }
+
+        
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+  }

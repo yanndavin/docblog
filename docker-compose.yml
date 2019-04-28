@@ -1,0 +1,67 @@
+version: '3.4'
+services:
+  git-server:
+    image: ${DOCKER_REGISTRY}docblog/git-server:${GIT_SERVER_DOCKER_IMAGE_VERSION}
+    expose:
+      - 3000
+    ports:
+      - ${GIT_SERVER_HTTP_PORT}:3000
+      - ${GIT_SERVER_SSH_PORT}:22
+    networks:
+      docblog:
+        aliases:
+          - git-server
+    command: >
+      /bin/bash -c "envsubst < /tmp/conf/app.ini.template > /data/gogs/conf/app.ini &&
+                    cp -R /etc/letsencrypt/ /letsencrypt &&
+                    chown -R git /letsencrypt && 
+                    /bin/s6-svscan /app/gogs/docker/s6/"
+    volumes:
+      - /etc/letsencrypt/:/etc/letsencrypt/
+      - git-server:/data
+    env_file:
+      - .env
+      
+  blog-builder:
+    image: ${DOCKER_REGISTRY}docblog/blog-builder:${BLOG_BUILDER_DOCKER_IMAGE_VERSION}
+    volumes:
+      - blog-builder:/blog
+    expose:
+      - 9000
+    ports:
+      - ${BLOG_BUILDER_WEBHOOK_PORT}:9000
+    networks:
+      docblog:
+        aliases:
+          - blog-builder
+    env_file:
+      - .secret
+      
+  web-server:
+    ports:
+      - 443:${WEB_SERVER_HTTPS_PORT}
+    image: ${DOCKER_REGISTRY}docblog/web-server:${WEB_SERVER_DOCKER_IMAGE_VERSION}
+    command: >
+      /bin/bash -c "envsubst < /etc/nginx/conf.d/blog.template > /etc/nginx/conf.d/default.conf && 
+                    exec nginx -g 'daemon off;'"
+    volumes:
+      - blog-builder:/etc/nginx/html/blog
+      - ./dockerfiles/web-server/conf.d:/etc/nginx/conf.d
+      - /etc/letsencrypt/:/etc/letsencrypt/
+    env_file:
+      - .env
+    depends_on:
+      - git-server
+    networks:
+      docblog:
+        aliases:
+          - web-server
+  
+volumes:
+  git-server:
+    name: git-server
+    external: true
+  blog-builder:
+  
+networks:
+  docblog:

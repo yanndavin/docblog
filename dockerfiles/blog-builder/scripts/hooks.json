@@ -1,0 +1,7 @@
+[
+  {
+    "id": "rebuild-webhook",
+    "execute-command": "/scripts/rebuild.sh",
+    "command-working-directory": "/blog/src"
+  }
+]
